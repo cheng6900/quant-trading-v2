@@ -3,3 +3,48 @@ body {
   background-color: #0f1115; /* 確保整個頁面底部是深色的 */
   color: white;
 }
+body, #root, .App { 
+background-color: #0f1115 !important; 
+    }
+    /* 修正後的輸入框樣式 */
+    .input-style {
+      width: 100% !important;
+      background-color: #1a1d24 !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 12px !important;
+      padding: 0 16px !important; /* 移除上下 padding，改由 height 撐開 */
+      color: #e2e8f0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      outline: none !important;
+      transition: all 0.2s ease !important;
+      height: 48px !important; /* 略微增加高度更顯大氣 */
+      display: block !important; /* 回歸區塊元素 */
+      line-height: 48px !important; /* 讓文字垂直置中 */
+    }
+
+    /* 專門修復日期輸入框的文字偏移 */
+    input[type="date"] {
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    /* 修復 Chrome/Safari 日期文字跑到底部的問題 */
+    input[type="date"]::-webkit-datetime-edit {
+      padding: 0 !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      line-height: 1 !important;
+    }
+
+    /* 讓日曆圖示亮一點 */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.5;
+      cursor: pointer;
+    }
+
+    .input-style:focus {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 1px #3b82f6 !important;
+    }

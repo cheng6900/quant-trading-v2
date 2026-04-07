@@ -40,6 +40,7 @@ import {
   onSnapshot,
   updateDoc,
 } from "firebase/firestore";
+import "./styles.css";
 
 // ========================================================
 // 1. Firebase 配置 (請在此處貼上你從 Firebase Console 取得的代碼)
@@ -58,58 +59,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const APP_ID_PATH = "trading-quant-stable-v1"; // 資料庫根目錄名稱
-// 直接在 JS 中定義強制樣式
-if (typeof document !== "undefined") {
-  const style = document.createElement("style");
-  style.innerHTML = `
-    body, #root, .App { 
-      background-color: #0f1115 !important; 
-    }
-    /* 修正後的輸入框樣式 */
-    .input-style {
-      width: 100% !important;
-      background-color: #1a1d24 !important;
-      border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      border-radius: 12px !important;
-      padding: 0 16px !important; /* 移除上下 padding，改由 height 撐開 */
-      color: #e2e8f0 !important;
-      font-family: 'JetBrains Mono', monospace !important;
-      outline: none !important;
-      transition: all 0.2s ease !important;
-      height: 48px !important; /* 略微增加高度更顯大氣 */
-      display: block !important; /* 回歸區塊元素 */
-      line-height: 48px !important; /* 讓文字垂直置中 */
-    }
 
-    /* 專門修復日期輸入框的文字偏移 */
-    input[type="date"] {
-      display: flex !important;
-      align-items: center !important;
-    }
-
-    /* 修復 Chrome/Safari 日期文字跑到底部的問題 */
-    input[type="date"]::-webkit-datetime-edit {
-      padding: 0 !important;
-      height: 100% !important;
-      display: flex !important;
-      align-items: center !important;
-      line-height: 1 !important;
-    }
-
-    /* 讓日曆圖示亮一點 */
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-      opacity: 0.5;
-      cursor: pointer;
-    }
-
-    .input-style:focus {
-      border-color: #3b82f6 !important;
-      box-shadow: 0 0 0 1px #3b82f6 !important;
-    }
-  `;
-  document.head.appendChild(style);
-}
+const calculateNetProfit = (entry, exit, qty, discount = 0.28) => {
+  const buyFee = Math.max(1, Math.floor(entry * qty * 0.001425 * discount));
+  const sellFee = Math.max(1, Math.floor(exit * qty * 0.001425 * discount));
+  const tax = Math.floor(exit * qty * 0.003);
+  const totalCost = buyFee + sellFee + tax;
+  const profit = (exit - entry) * qty - totalCost;
+  return { totalCost, profit };
+};
 export default function App() {
   const [user, setUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -217,20 +175,7 @@ useEffect(() => {
     const unsubscribe = onSnapshot(tradesCollection, (snapshot) => {
       const data = snapshot.docs.map((doc) => {
         const d = doc.data();
-        const entry = Number(d.entryPrice) || 0;
-        const exit = Number(d.exitPrice) || 0;
-        const qty = Number(d.quantity) || 0;
-
-        // 如果資料庫沒存 costs，就在前端即時算一個大概的（0.1425%*折數 + 0.3%稅）
-        const recordedCosts = Number(d.costs);
-        const fallbackCosts =
-          entry * qty * 0.001425 * 0.28 +
-          exit * qty * 0.001425 * 0.28 +
-          exit * qty * 0.003;
-        const finalCosts = !isNaN(recordedCosts)
-          ? recordedCosts
-          : fallbackCosts;
-
+        
         return {
           id: doc.id,
           ...d,
@@ -259,14 +204,6 @@ useEffect(() => {
     }
   };
 
-  const handleQuickLogin = async () => {
-    try {
-      await signInAnonymously(auth);
-    } catch (err) {
-      setAuthError("匿名登入失敗，請確認 Firebase 後台已開啟匿名驗證。");
-    }
-  };
-
   // --- 編輯功能狀態 ---
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -290,16 +227,7 @@ useEffect(() => {
       const qty = parseFloat(formData.quantity);
 
       // 計算台股成本 (手續費 + 證交稅)
-      const buyFee = Math.max(
-        1,
-        Math.floor(entry * qty * 0.001425 * feeDiscount)
-      );
-      const sellFee = Math.max(
-        1,
-        Math.floor(exit * qty * 0.001425 * feeDiscount)
-      );
-      const tax = Math.floor(exit * qty * 0.003);
-      const totalCost = buyFee + sellFee + tax;
+      const { totalCost, profit } = calculateNetProfit(entry, exit, qty,            feeDiscount);
 
       const tradesCollection = collection(
         db,
@@ -354,16 +282,7 @@ useEffect(() => {
     const currentTag = editFormData.tag || "未分類";
 
     // 2. 重新計算台股成本 (手續費與稅金)
-    // 註：請確保 feeDiscount 變數已在上方定義 (例如 0.28)
-    const discount = typeof feeDiscount !== 'undefined' ? feeDiscount : 1; 
-    const buyFee = Math.max(1, Math.floor(entry * qty * 0.001425 * discount));
-    const sellFee = Math.max(1, Math.floor(exit * qty * 0.001425 * discount));
-    const tax = Math.floor(exit * qty * 0.003);
-    const totalCost = buyFee + sellFee + tax;
-
-    // 3. 重新計算損益
-    const profit = (exit - entry) * qty - totalCost;
-
+    const { totalCost, profit } = calculateNetProfit(entry, exit, qty,            feeDiscount);
     // 4. 定義 Firebase 路徑
     // 註：請確保 APP_ID_PATH 已定義
     const tradeRef = doc(
@@ -411,12 +330,12 @@ const filteredTrades = useMemo(() => {
 // 2. 處理排序與分頁 (給表格用的資料)
 const paginatedTrades = useMemo(() => {
   const sorted = [...filteredTrades].sort((a, b) => b.date.localeCompare(a.date));
-  const startIndex = (currentPage - 1) * 10;
-  return sorted.slice(startIndex, startIndex + 10);
-}, [filteredTrades, currentPage]);
+  const startIndex = (currentPage - 1) * pageSize;
+  return sorted.slice(startIndex, startIndex + pageSize);
+}, [filteredTrades, currentPage, pageSize]);
 
 // 3. 重新計算總頁數 (避免搜尋後頁碼錯誤)
-const totalPages = Math.ceil(filteredTrades.length / 10);
+const totalPages = Math.ceil(filteredTrades.length / pageSize);
   // --- 修改統計邏輯 (stats) ---
 const stats = useMemo(() => {
   // 1. 注意：這裡改用 filteredTrades，如果過濾後沒資料，回傳初始值
@@ -1211,4 +1130,5 @@ function InputGroup({ label, children }) {
     </div>
   );
 }
+
 

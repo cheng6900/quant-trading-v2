@@ -703,11 +703,6 @@ const strategyData = useMemo(() => {
              value={`$${Math.round(stats.maxDrawdown).toLocaleString()}`}
               trend={-1} 
               />
-          <KPIBox
-              title="每筆期望值"
-              value={`$${Math.round(stats.expectancy).toLocaleString()}`}
-              trend={stats.expectancy >= 0 ? 1 : -1}
-              />    
         </div>
         
         {/* 圖表與按鈕 */}

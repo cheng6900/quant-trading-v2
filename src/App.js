@@ -24,13 +24,12 @@ import {
 
 // --- Firebase 核心導入 ---
 import { initializeApp } from "firebase/app";
-// 尋找原本這段，並把它換成下面這樣
 import {
   getAuth,
   onAuthStateChanged,
   signOut,
   GoogleAuthProvider,
-  signInWithPopup, // 確保這行有 GoogleAuthProvider 和 signInWithPopup
+  signInWithPopup, 
 } from "firebase/auth";
 import {
   getFirestore,
@@ -434,6 +433,7 @@ const stats = useMemo(() => {
       count: 0,
       chartData: [],
       maxDrawdown: 0,
+      expectancy: 0,
     };
 
   const now = new Date();
@@ -459,6 +459,14 @@ const stats = useMemo(() => {
   const grossProfit = wins.reduce((sum, t) => sum + t.profit, 0);
   const grossLoss = Math.abs(losses.reduce((sum, t) => sum + t.profit, 0));
 
+  const winRateDec = wins.length / filteredTrades.length; // 勝率 (小數)
+  const lossRateDec = losses.length / filteredTrades.length; // 敗率 (小數)
+  const avgWin = wins.length ? grossProfit / wins.length : 0; 
+  const avgLoss = losses.length ? (losses.reduce((sum, t) => sum + t.profit, 0) / losses.length) : 0;
+
+  // 計算期望值：每筆交易預計能帶來的平均損益
+  const expectancy = (winRateDec * avgWin) + (lossRateDec * avgLoss);
+  
   let cumulative = 0;
   let peak = 0;   
   let maxDD = 0;  
@@ -489,6 +497,9 @@ const stats = useMemo(() => {
     avgLoss: losses.length ? grossLoss / losses.length : 0,
     chartData,
     maxDrawdown: maxDD,
+    avgWin,
+    avgLoss: Math.abs(avgLoss), // 顯示用保持正值 [cite: 294]
+    expectancy,
   };
 }, [filteredTrades]);
 const strategyData = useMemo(() => {
@@ -692,6 +703,11 @@ const strategyData = useMemo(() => {
              value={`$${Math.round(stats.maxDrawdown).toLocaleString()}`}
               trend={-1} 
               />
+          <KPIBox
+              title="每筆期望值"
+              value={`$${Math.round(stats.expectancy).toLocaleString()}`}
+              trend={stats.expectancy >= 0 ? 1 : -1}
+              />    
         </div>
         
         {/* 圖表與按鈕 */}
@@ -781,6 +797,11 @@ const strategyData = useMemo(() => {
                 label="平均虧損"
                 value={`-$${Math.round(stats.avgLoss)}`}
                 color="text-rose-400"
+              />
+              <DetailRow
+                label="每筆期望值"
+                value={`$${Math.round(stats.expectancy).toLocaleString()}`}
+                color="text-blue-400"
               />
               <div className="h-px bg-white/5"></div>
               <DetailRow
@@ -920,7 +941,7 @@ const strategyData = useMemo(() => {
                           <div className="flex justify-center gap-2">
                             <button
                               onClick={() => handleUpdate(t.id)}
-                              className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-md text-xs font-bold hover:bg-emerald-500 hover:text-white transition"
+                              className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-md text-xs font-bold        hover:bg-emerald-500 hover:text-white transition"
                             >
                               儲存
                             </button>

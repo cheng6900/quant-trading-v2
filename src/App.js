@@ -175,7 +175,20 @@ useEffect(() => {
     const unsubscribe = onSnapshot(tradesCollection, (snapshot) => {
       const data = snapshot.docs.map((doc) => {
         const d = doc.data();
-        
+        const entry = Number(d.entryPrice) || 0;
+        const exit = Number(d.exitPrice) || 0;
+        const qty = Number(d.quantity) || 0;
+
+        // 如果資料庫沒存 costs，就在前端即時算一個大概的（0.1425%*折數 + 0.3%稅）
+        const recordedCosts = Number(d.costs);
+        const fallbackCosts =
+          entry * qty * 0.001425 * 0.28 +
+          exit * qty * 0.001425 * 0.28 +
+          exit * qty * 0.003;
+        const finalCosts = !isNaN(recordedCosts)
+          ? recordedCosts
+          : fallbackCosts;
+
         return {
           id: doc.id,
           ...d,
@@ -1130,5 +1143,6 @@ function InputGroup({ label, children }) {
     </div>
   );
 }
+
 
 

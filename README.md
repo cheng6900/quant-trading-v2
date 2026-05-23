@@ -1,7 +1,7 @@
 
-# Performance Quant - 量化績效分析系統
+# Performance Quant - 量化績效系統
 
-**Performance Quant** 是一款專為台股交易者設計的自動化績效追蹤工具。本系統透過「Vibe Coding」理念開發，結合 AI 輔助邏輯與前端視覺化技術，幫助投資者精確掌握每一筆交易的稅後淨利與長期資產走勢。
+**Performance Quant** 是一款專為台股交易者設計的自動化績效追蹤工具。本系統透過Vibe Coding，結合 AI 輔助邏輯與前端視覺化技術，幫助投資者精確掌握每一筆交易的稅後淨利與長期資產走勢。
 
 ## 🚀 核心功能
 
